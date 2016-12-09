@@ -463,6 +463,21 @@ SSLNetVConnection::callHooks(TSHttpHookID eventId)
   }
   this->sslHandshakeHookState = holdState;
 ```
+
+## Plugin 异步事件模型
+Asynchronous Event Model  
+
+1. 利用可用的多个cpu和多个I / O设备的并发性。
+2. 管理并发许多同步客户端连接。例如,一个服务器可以为每个连接创建一个线程,允许操作系统(OS)来控制线程之间切换。
+
+traffic server 内部应该有如下实现：
+```cpp
+for (;;) {
+   event = get_next_event();
+   handle_event (event);
+}
+```
+
 ## HTTP HOOK 种类
 
 - Global HTTP hooks
@@ -542,20 +557,6 @@ blacklist_plugin (TSCont contp, TSEvent event, void *edata)
          break;
    }
    return 0;
-}
-```
-
-## Plugin 异步事件模型
-Asynchronous Event Model  
-
-1. 利用可用的多个cpu和多个I / O设备的并发性。
-2. 管理并发许多同步客户端连接。例如,一个服务器可以为每个连接创建一个线程,允许操作系统(OS)来控制线程之间切换。
-
-traffic server 内部应该有如下实现：
-```cpp
-for (;;) {
-   event = get_next_event();
-   handle_event (event);
 }
 ```
 
