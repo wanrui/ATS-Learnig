@@ -27,6 +27,11 @@ Transaction hooks
 Transformation hooks
 Session hooks
 HTTP select alternate hook
+TSEventFunc 回调函数定义如下：
+```cpp
+static int function_name (TSCont contp, TSEvent event, void *edata)
+```
+其中edata 类型的数据根据不同的事件触发类型都不一样，一般HTTP事务 中的回调类型为TSHttpTxn ，所有事件 对应的edata 类型如下：
 
 |   Event  |  Event Sender   |   Data Type  |
 | --- | --- | --- |
