@@ -463,6 +463,87 @@ SSLNetVConnection::callHooks(TSHttpHookID eventId)
   }
   this->sslHandshakeHookState = holdState;
 ```
+## HTTP HOOK 种类
+
+- Global HTTP hooks
+	用TSHttpHookAdd 函数在TSPluginInit函中进行挂载钩子 
+- Transaction hooks
+	为指定 HTTP transaction挂载钩子，不是在TSPluginInit函数中使用。
+	https://docs.trafficserver.apache.org/en/latest/developer-guide/plugins/continuations/writing-handler-functions.en.html
+- Transformation hooks	
+	使用TSHttpTxnHookAdd 挂载transform 事件
+- Session hooks
+	TSHttpSsnHookAdd() 
+- HTTP select alternate hook
+
+## HTTP HOOK 回调
+TSEventFunc 回调函数定义如下：
+```cpp
+static int function_name (TSCont contp, TSEvent event, void *edata)
+```
+其中edata 类型的数据根据不同的事件触发类型都不一样，一般HTTP事务 中的回调类型为TSHttpTxn ，所有事件 对应的edata 类型如下：
+
+|   Event  |  Event Sender   |   Data Type  |
+| --- | --- | --- |
+|	TS_EVENT_HTTP_READ_REQUEST_HDR	|	TS_HTTP_READ_REQUEST_HDR_HOOK	|	TSHttpTxn	|
+|	TS_EVENT_HTTP_PRE_REMAP	|	TS_HTTP_PRE_REMAP_HOOK	|	TSHttpTxn	|
+|	TS_EVENT_HTTP_OS_DNS	|	TS_HTTP_OS_DNS_HOOK	|	TSHttpTxn	|
+|	TS_EVENT_HTTP_SEND_REQUEST_HDR	|	TS_HTTP_SEND_REQUEST_HDR_HOOK	|	TSHttpTxn	|
+|	TS_EVENT_HTTP_READ_CACHE_HDR	|	TS_HTTP_READ_CACHE_HDR_HOOK	|	TSHttpTxn	|
+|	TS_EVENT_HTTP_READ_RESPONSE_HDR	|	TS_HTTP_READ_RESPONSE_HDR_HOOK	|	TSHttpTxn	|
+|	TS_EVENT_HTTP_SEND_RESPONSE_HDR	|	TS_HTTP_SEND_RESPONSE_HDR_HOOK	|	TSHttpTxn	|
+|	TS_EVENT_HTTP_SELECT_ALT	|	TS_HTTP_SELECT_ALT_HOOK	|	TSHttpTxn	|
+|	TS_EVENT_HTTP_TXN_START	|	TS_HTTP_TXN_START_HOOK	|	TSHttpTxn	|
+|	TS_EVENT_HTTP_TXN_CLOSE	|	TS_HTTP_TXN_CLOSE_HOOK	|	TSHttpTxn	|
+|	TS_EVENT_HTTP_SSN_START	|	TS_HTTP_SSN_START_HOOK	|	TSHttpSsn	|
+|	TS_EVENT_HTTP_SSN_CLOSE	|	TS_HTTP_SSN_CLOSE_HOOK	|	TSHttpSsn	|
+|	TS_EVENT_NONE	|		|		|
+|	TS_EVENT_CACHE_LOOKUP_COMPLETE	|	TS_HTTP_CACHE_LOOKUP_COMPLETE_HOOK	|	TSHttpTxn	|
+|	TS_EVENT_IMMEDIATE	|	TSVConnClose() TSVIOReenable()TSContSchedule()	|		|
+|	TS_EVENT_IMMEDIATE	|	TS_HTTP_REQUEST_TRANSFORM_HOOK	|		|
+|	TS_EVENT_IMMEDIATE	|	TS_HTTP_RESPONSE_TRANSFORM_HOOK	|		|
+|	TS_EVENT_CACHE_OPEN_READ	|	TSCacheRead()	|	Cache VC	|
+|	TS_EVENT_CACHE_OPEN_READ_FAILED	|	TSCacheRead()	|	TS_CACHE_ERROR code	|
+|	TS_EVENT_CACHE_OPEN_WRITE	|	TSCacheWrite()	|	Cache VC	|
+|	TS_EVENT_CACHE_OPEN_WRITE_FAILED	|	TSCacheWrite()	|	TS_CACHE_ERROR code	|
+|	TS_EVENT_CACHE_REMOVE	|	TSCacheRemove()	|		|
+|	TS_EVENT_CACHE_REMOVE_FAILED	|	TSCacheRemove()	|	TS_CACHE_ERROR code	|
+|	TS_EVENT_NET_ACCEPT	|	TSNetAccept() TSHttpTxnServerIntercept()TSHttpTxnIntercept()	|	TSNetVConnection	|
+|	TS_EVENT_NET_ACCEPT_FAILED	|	TSNetAccept() TSHttpTxnServerIntercept()TSHttpTxnIntercept()	|		|
+|	TS_EVENT_HOST_LOOKUP	|	TSHostLookup()	|	TSHostLookupResult	|
+|	TS_EVENT_TIMEOUT	|	TSContSchedule()	|		|
+|	TS_EVENT_ERROR	|		|		|
+|	TS_EVENT_VCONN_READ_READY	|	TSVConnRead()	|	TSVIO	|
+|	TS_EVENT_VCONN_WRITE_READY	|	TSVConnWrite()	|	TSVIO	|
+|	TS_EVENT_VCONN_READ_COMPLETE	|	TSVConnRead()	|	TSVIO	|
+|	TS_EVENT_VCONN_WRITE_COMPLETE	|	TSVConnWrite()	|	TSVIO	|
+|	TS_EVENT_VCONN_EOS	|	TSVConnRead()	|	TSVIO	|
+|	TS_EVENT_NET_CONNECT	|	TSNetConnect()	|	TSVConn	|
+|	TS_EVENT_NET_CONNECT_FAILED	|	TSNetConnect()	|	TSVConn	|
+|	TS_EVENT_HTTP_CONTINUE	|		|		|
+|	TS_EVENT_HTTP_ERROR	|		|		|
+|	TS_EVENT_MGMT_UPDATE	|	TSMgmtUpdateRegister()	|		|
+
+处理方式举例如下：
+
+```cpp
+static int
+blacklist_plugin (TSCont contp, TSEvent event, void *edata)
+{
+   TSHttpTxn txnp = (TSHttpTxn) edata;
+   switch (event) {
+      case TS_EVENT_HTTP_OS_DNS:
+         handle_dns (txnp, contp);
+         return 0;
+      case TS_EVENT_HTTP_SEND_RESPONSE_HDR:
+         handle_response (txnp);
+         return 0;
+      default:
+         break;
+   }
+   return 0;
+}
+```
 
 ## Plugin 异步事件模型
 Asynchronous Event Model  
