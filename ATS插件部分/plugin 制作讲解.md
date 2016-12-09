@@ -19,14 +19,19 @@
 ![](cpp_api_image/transaction_states_timers.png) 
 
 ## HTTP HOOK 种类
-Global HTTP hooks
+
+- Global HTTP hooks
 	用TSHttpHookAdd 函数在TSPluginInit函中进行挂载钩子 
-Transaction hooks
+- Transaction hooks
 	为指定 HTTP transaction挂载钩子，不是在TSPluginInit函数中使用。
 	https://docs.trafficserver.apache.org/en/latest/developer-guide/plugins/continuations/writing-handler-functions.en.html
-Transformation hooks
-Session hooks
-HTTP select alternate hook
+- Transformation hooks	
+	使用TSHttpTxnHookAdd 挂载transform 事件
+- Session hooks
+	TSHttpSsnHookAdd() 
+- HTTP select alternate hook
+
+
 TSEventFunc 回调函数定义如下：
 ```cpp
 static int function_name (TSCont contp, TSEvent event, void *edata)
@@ -73,6 +78,27 @@ static int function_name (TSCont contp, TSEvent event, void *edata)
 |	TS_EVENT_HTTP_CONTINUE	|		|		|
 |	TS_EVENT_HTTP_ERROR	|		|		|
 |	TS_EVENT_MGMT_UPDATE	|	TSMgmtUpdateRegister()	|		|
+
+处理方式举例如下：
+
+```cpp
+static int
+blacklist_plugin (TSCont contp, TSEvent event, void *edata)
+{
+   TSHttpTxn txnp = (TSHttpTxn) edata;
+   switch (event) {
+      case TS_EVENT_HTTP_OS_DNS:
+         handle_dns (txnp, contp);
+         return 0;
+      case TS_EVENT_HTTP_SEND_RESPONSE_HDR:
+         handle_response (txnp);
+         return 0;
+      default:
+         break;
+   }
+   return 0;
+}
+```
 
 ## HTTP Sessions
 一个HTTP session 与客户端的的TCP 链接对应的对象，一个HTTP请求和HTTP响应构成了一个HTTP transaction，一个TCP链接上可以发送多多个HTTP请求和HTTP 响应，
