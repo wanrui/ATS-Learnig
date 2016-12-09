@@ -111,12 +111,15 @@ remap_load_plugin--
       pi->fp_tsremap_os_response = (remap_plugin_info::_tsremap_os_response *)dlsym(pi->dlh, TSREMAP_FUNCNAME_OS_RESPONSE);
 ```
 remap_plugin_info 插件类的内容如下，需要实现的函数如下
+
+```cpp
 #define TSREMAP_FUNCNAME_INIT "TSRemapInit"
 #define TSREMAP_FUNCNAME_DONE "TSRemapDone"
 #define TSREMAP_FUNCNAME_NEW_INSTANCE "TSRemapNewInstance"
 #define TSREMAP_FUNCNAME_DELETE_INSTANCE "TSRemapDeleteInstance"
 #define TSREMAP_FUNCNAME_DO_REMAP "TSRemapDoRemap"
 #define TSREMAP_FUNCNAME_OS_RESPONSE "TSRemapOSResponse"
+```
 
  1. _tsremap_init：TSRemapInit
  2. _tsremap_done:TSRemapDone
