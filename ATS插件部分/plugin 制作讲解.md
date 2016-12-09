@@ -28,6 +28,19 @@ Transformation hooks
 Session hooks
 HTTP select alternate hook
 
+|   Event  |  Event Sender   |   Data Type  |
+| --- | --- | --- |
+|     |     |     |
+|     |     |     |
+|     |     |     |
+|     |     |     |
+|     |     |     |
+|     |     |     |
+|     |     |     |
+|     |     |     |
+|     |     |     |
+|     |     |     |
+
 ## HTTP Sessions
 一个HTTP session 与客户端的的TCP 链接对应的对象，一个HTTP请求和HTTP响应构成了一个HTTP transaction，一个TCP链接上可以发送多多个HTTP请求和HTTP 响应，
 The HTTP session的钩子如下：
