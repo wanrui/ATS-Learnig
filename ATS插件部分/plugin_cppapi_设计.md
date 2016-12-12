@@ -26,4 +26,101 @@
 ![](cpp_api_image/UMLClassDiagram-Transaction.png) 
 该类 可做如下更改
 
-* 
+
+
+```cpp
+GlobalPlugin::GlobalPlugin(bool ignore_internal_transactions)
+{
+  utils::internal::initTransactionManagement();
+  state_ = new GlobalPluginState(this, ignore_internal_transactions);
+  TSMutex mutex = NULL;
+  state_->cont_ = TSContCreate(handleGlobalPluginEvents, mutex);
+  TSContDataSet(state_->cont_, static_cast<void *>(state_));
+}
+
+static int
+handleGlobalPluginEvents(TSCont cont, TSEvent event, void *edata)
+{
+  TSHttpTxn txn = static_cast<TSHttpTxn>(edata);
+  GlobalPluginState *state = static_cast<GlobalPluginState *>(TSContDataGet(cont));
+  if (state->ignore_internal_transactions_ && (TSHttpTxnIsInternal(txn) == TS_SUCCESS)) {
+    LOG_DEBUG("Ignoring event %d on internal transaction %p for global plugin %p", event, txn, state->global_plugin_);
+    TSHttpTxnReenable(txn, TS_EVENT_HTTP_CONTINUE);
+  } else {
+    LOG_DEBUG("Invoking global plugin %p for event %d on transaction %p", state->global_plugin_, event, txn);
+    utils::internal::invokePluginForEvent(state->global_plugin_, txn, event);
+  }
+  return 0;
+}
+
+void
+utils::internal::invokePluginForEvent(TransactionPlugin *plugin, TSHttpTxn ats_txn_handle, TSEvent event)
+{
+  ScopedSharedMutexLock scopedLock(plugin->getMutex());
+  ::invokePluginForEvent(static_cast<Plugin *>(plugin), ats_txn_handle, event);
+}
+
+void inline invokePluginForEvent(Plugin *plugin, TSHttpTxn ats_txn_handle, TSEvent event)
+{
+  Transaction &transaction = utils::internal::getTransaction(ats_txn_handle);
+  switch (event) {
+  case TS_EVENT_HTTP_PRE_REMAP:
+    plugin->handleReadRequestHeadersPreRemap(transaction);
+    break;
+  case TS_EVENT_HTTP_POST_REMAP:
+    plugin->handleReadRequestHeadersPostRemap(transaction);
+    break;
+  case TS_EVENT_HTTP_SEND_REQUEST_HDR:
+    plugin->handleSendRequestHeaders(transaction);
+    break;
+  case TS_EVENT_HTTP_READ_RESPONSE_HDR:
+    plugin->handleReadResponseHeaders(transaction);
+    break;
+  case TS_EVENT_HTTP_SEND_RESPONSE_HDR:
+    plugin->handleSendResponseHeaders(transaction);
+    break;
+  case TS_EVENT_HTTP_OS_DNS:
+    plugin->handleOsDns(transaction);
+    break;
+  case TS_EVENT_HTTP_READ_REQUEST_HDR:
+    plugin->handleReadRequestHeaders(transaction);
+    break;
+  case TS_EVENT_HTTP_READ_CACHE_HDR:
+    plugin->handleReadCacheHeaders(transaction);
+    break;
+  case TS_EVENT_HTTP_CACHE_LOOKUP_COMPLETE:
+    plugin->handleReadCacheLookupComplete(transaction);
+    break;
+  case TS_EVENT_HTTP_SELECT_ALT:
+    plugin->handleSelectAlt(transaction);
+    break;
+
+  default:
+    assert(false); /* we should never get here */
+    break;
+  }
+}
+
+(gdb) bt
+#0  ServerResponsePlugin::handleSendResponseHeaders (this=0x114d8a0, transaction=...) at ServerResponse.cc:77
+#1  0x00007fffefbde44c in (anonymous namespace)::handleGlobalPluginEvents (cont=<value optimized out>, 
+    event=TS_EVENT_HTTP_SEND_RESPONSE_HDR, edata=0x7fffedc4d080) at GlobalPlugin.cc:58
+#2  0x0000000000599aa5 in HttpSM::state_api_callout (this=0x7fffedc4d080, event=<value optimized out>, data=<value optimized out>)
+    at HttpSM.cc:1382
+#3  0x000000000059edc0 in HttpSM::state_api_callback (this=0x7fffedc4d080, event=60000, data=0x0) at HttpSM.cc:1273
+#4  0x00000000004cef28 in TSHttpTxnReenable (txnp=0x7fffedc4d080, event=TS_EVENT_HTTP_CONTINUE) at InkAPI.cc:5671
+#5  0x00007fffefbdf7e5 in (anonymous namespace)::handleTransactionEvents (cont=<value optimized out>, event=<value optimized out>, 
+    edata=0x7fffedc4d080) at utils_internal.cc:92
+#6  0x0000000000599aa5 in HttpSM::state_api_callout (this=0x7fffedc4d080, event=<value optimized out>, data=<value optimized out>)
+    at HttpSM.cc:1382
+#7  0x000000000059f94f in HttpSM::set_next_state (this=0x7fffedc4d080) at HttpSM.cc:7164
+#8  0x000000000059880f in HttpSM::handle_api_return (this=0x7fffedc4d080) at HttpSM.cc:1526
+#9  0x0000000000599c93 in HttpSM::state_api_callout (this=0x7fffedc4d080, event=<value optimized out>, data=0x0) at HttpSM.cc:1464
+#10 0x000000000059f410 in HttpSM::set_next_state (this=0x7fffedc4d080) at HttpSM.cc:6955
+#11 0x000000000059880f in HttpSM::handle_api_return (this=0x7fffedc4d080) at HttpSM.cc:1526
+#12 0x0000000000599c93 in HttpSM::state_api_callout (this=0x7fffedc4d080, event=<value optimized out>, data=0x0) at HttpSM.cc:1464
+#13 0x000000000059edc0 in HttpSM::state_api_callback (this=0x7fffedc4d080, event=60000, data=0x0) at HttpSM.cc:1273
+#14 0x00000000004cef28 in TSHttpTxnReenable (txnp=0x7fffedc4d080, event=TS_EVENT_HTTP_CONTINUE) at InkAPI.cc:5671
+#15 0x00007fffefbdf7e5 in (anonymous namespace)::handleTransactionEvents (cont=<value optimized out>, event=<value optimized out>, 
+    edata=0x7fffedc4d080) at utils_internal.cc:92
+```
