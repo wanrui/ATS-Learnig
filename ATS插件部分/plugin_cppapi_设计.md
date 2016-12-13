@@ -29,13 +29,9 @@
 
 Global插件编写流程：
 
-1. TSPluginInit 函数为全局插件的入口，在函数中进行 ，创建Global插件类型  new GlobalHookPlugin()；
-2. 可在构造函数中，注册对应的事件：registerHook(HOOK_READ_REQUEST_HEADERS_PRE_REMAP)；
+1. TSPluginInit 函数为全局插件的入口，在函数中进行：创建Global插件类型  new GlobalHookPlugin()；
+2. 可在GlobalHookPlugin构造函数中，注册对应的事件：registerHook(HOOK_READ_REQUEST_HEADERS_PRE_REMAP)；
 3. 找到对应的事件的虚函数，进行对应的实现；
-
-Remap 插件编写流程：
-
-1. 
 
 ```cpp
 //构造函数，GlobalPlugin 基类 初始化。
@@ -149,3 +145,8 @@ void inline invokePluginForEvent(Plugin *plugin, TSHttpTxn ats_txn_handle, TSEve
 #15 0x00007fffefbdf7e5 in (anonymous namespace)::handleTransactionEvents (cont=<value optimized out>, event=<value optimized out>, 
     edata=0x7fffedc4d080) at utils_internal.cc:92
 ```
+
+Remap 插件编写流程：
+
+1. TSRemapNewInstance 为remap 插件的入口，在函数中进行：创建remap插件类型 new MyRemapPlugin(instance_handle);
+2. 为MyRemapPlugin 类实现doRemap方法
