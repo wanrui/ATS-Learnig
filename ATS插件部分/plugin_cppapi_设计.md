@@ -29,15 +29,28 @@
 
 
 ```cpp
-GlobalPlugin::GlobalPlugin(bool ignore_internal_transactions)
+//构造函数，GlobalPlugin 基类 初始化。
+GlobalPlugin::GlobalPlugin(	 ignore_internal_transactions)
 {
   utils::internal::initTransactionManagement();
   state_ = new GlobalPluginState(this, ignore_internal_transactions);
   TSMutex mutex = NULL;
+  // 初始化，创建continuation ，绑定在state_->cont_ 中，在registerHook 使用
   state_->cont_ = TSContCreate(handleGlobalPluginEvents, mutex);
   TSContDataSet(state_->cont_, static_cast<void *>(state_));
 }
 
+//客户调用registerHook 注册相关事件，continuation 已经在构造函数中创建了，然后使用TSHttpHookAdd挂载该事件。
+void
+GlobalPlugin::registerHook(Plugin::HookType hook_type)
+{
+  TSHttpHookID hook_id = utils::internal::convertInternalHookToTsHook(hook_type);
+  TSHttpHookAdd(hook_id, state_->cont_);
+  LOG_DEBUG("Registered global plugin %p for hook %s", this, HOOK_TYPE_STRINGS[hook_type].c_str());
+}
+
+//continuation 回调函数，当有事件发生的时候会触发基类的这个函数。
+// 然后通过 utils::internal::invokePluginForEvent(state->global_plugin_, txn, event); 通知GlobalPlugin里面的相关函数。
 static int
 handleGlobalPluginEvents(TSCont cont, TSEvent event, void *edata)
 {
@@ -53,15 +66,18 @@ handleGlobalPluginEvents(TSCont cont, TSEvent event, void *edata)
   return 0;
 }
 
+//如果通知这些虚函数呢？？？？静态函数
 void
 utils::internal::invokePluginForEvent(TransactionPlugin *plugin, TSHttpTxn ats_txn_handle, TSEvent event)
 {
+//锁----！！！
   ScopedSharedMutexLock scopedLock(plugin->getMutex());
   ::invokePluginForEvent(static_cast<Plugin *>(plugin), ats_txn_handle, event);
 }
 
 void inline invokePluginForEvent(Plugin *plugin, TSHttpTxn ats_txn_handle, TSEvent event)
 {
+//事件翻译后，转换成cpp 的数据结构 反馈给外面
   Transaction &transaction = utils::internal::getTransaction(ats_txn_handle);
   switch (event) {
   case TS_EVENT_HTTP_PRE_REMAP:
