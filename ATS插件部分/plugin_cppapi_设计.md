@@ -27,6 +27,15 @@
 该类 可做如下更改
 
 
+Global插件编写流程：
+
+1. TSPluginInit 函数为全局插件的入口，在函数中进行 ，创建Global插件类型  new GlobalHookPlugin()；
+2. 可在构造函数中，注册对应的事件：registerHook(HOOK_READ_REQUEST_HEADERS_PRE_REMAP)；
+3. 找到对应的事件的虚函数，进行对应的实现；
+
+Remap 插件编写流程：
+
+1. 
 
 ```cpp
 //构造函数，GlobalPlugin 基类 初始化。
